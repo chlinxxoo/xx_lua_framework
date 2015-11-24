@@ -4,7 +4,6 @@
 
 -- 统一输出函数，可以制定样式，支持多参数如printChl("a", "b", "c")
 printChl = function (...)
-	do return end
 	local params = {...}
 	local str = nil
 	for k,v in pairs(params) do

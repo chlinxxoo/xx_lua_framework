@@ -10,21 +10,21 @@ f.init = function (...)
 end
 
 f[1] = function (...)
-	-- 点击A
+	printChl("点击A")
 	-- ...
 end
 
 f[5] = function (...)
-    -- 点击B
+    printChl("点击B")
     -- ...
 end
 
-f[10] = function (...)
-	
+f[13] = function (...)
+	-- ...
 end
 
 f[15] = function (...)
-
+-- ...
 end
 
 return f
