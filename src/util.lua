@@ -3,7 +3,14 @@
 --2015.11.17 20:19
 
 -- 统一输出函数，可以制定样式，支持多参数如printChl("a", "b", "c")
+local bb = require("badboy")
+bb.loadutilslib()
+json = bb.getJSON()
+
 printChl = function (...)
+	if not _isDebug then
+		do return end
+	end
 	local params = {...}
 	local str = nil
 	for k,v in pairs(params) do
@@ -27,6 +34,9 @@ local next = next
 
 -- 格式化输出table（力荐）
 printr = function (root, notPrint, params)
+	if not _isDebug then
+		do return end
+	end
 	local rootType = type(root)
 	if rootType == "table" then
 		local tag = params and params.tag or "Table detail:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
@@ -63,15 +73,45 @@ printr = function (root, notPrint, params)
 	end
 end
 
--- 使用触摸，结合t_XXXX配置表，可以通过调用tc(_btn.main.armyOverview)点击x=104, y=24的坐标
-tc = function (tb, sleep)
-	local pos = tb[_orientation]		-- 可以根据屏幕方向做自适应
-	if pos and pos.x and pos.y then
-	    touchDown(1, pos.x * 2, pos.y * 2)
-	    mSleep(sleep or 50)
-	    touchUp(1, pos.x * 2, pos.y * 2)
+-- local posCache = {}
+tc = function (config)
+	if config then
+		local x, y = nil
+		if config.posFunc then
+			-- local posCache[config.catchKey]
+			x, y = config.posFunc()
+			-- posCache[config.catchKey] = {x = x, y = y}
+		else
+			x, y = config.x, config.y
+		end
+		if x and y and x ~= -1 and y ~= -1 then
+			printChl("tcing:", x, y)
+			tap(x, y)
+		else
+			printChl("tcing error! x and y is nil")
+		end
 	else
-		printChl("click failed! x or y is not offer")
+		printChl("click failed! config is not legal")
+	end
+end
+
+tcAll = function (config, loop, rc)
+	if config then
+		local ret = config.posFunc()
+		printChl("found", #ret)
+		for i, v in ipairs(ret) do
+			-- 找到一个点就点rc次
+			for i=1, rc do
+				tc(v)
+			end
+		end
+		if loop and #ret ~= 0 then
+			ss()
+			printChl("looping")
+			tcAll(config, loop, rc)
+		end
+	else
+		printChl("click failed! config is not legal")
 	end
 end
 
@@ -97,12 +137,15 @@ end
 
 local _snapshot = snapshot
 snapshot = function (suffix)
+	suffix = suffix or ""
 	local current_time = os.date("%Y-%m-%d-"..suffix, os.time())
-	_snapshot(current_time..".png", 0, 0, _fsw, _fsh)    
+	_snapshot(current_time..".png", 0, 0, _fsw - 1, _fsh - 1)
+	printChl("snapshot success!", current_time)
 end
 
 dg = function (content)
-    dialog(content, 3)
+	toast(content)
+    -- dialog(content, 3)
 end
 
 decodeTwo = function (str, ...)
@@ -138,31 +181,50 @@ isColor = function (c, s)
 	printChl("isColor not match", rr, gg, bb)
 end
 
-sortTable = function (s)
+sortTable = function (s, func)
 	local sort = {}
 	local copy = {}
 	for k,v in pairs(s) do
 		copy[k] = v
 	end
 	for k,v in pairs(s) do
+		local isFirst = true
 		local curK, curV = nil, nil
 		for k2,v2 in pairs(copy) do
-			if not curK then 
-				curK = k2 
+			if isFirst then 
+				curK = k2
+				curV = v2
+				isFirst = false
 			else
-				printChl(k2, k)
-				if k2 <= curK then
-					curK = k2
-					curV = v2
+				if func then
+					-- printChl(curK, s[curK])
+					-- printr(s[curK])
+					if func(s[k2], s[curK], k2, curK) then
+						curK = k2
+						curV = v2
+					end
+				else
+					if k2 <= curK then
+						curK = k2
+						curV = v2
+					end
 				end
 			end
 		end
-		printChl(curK)
 		table.insert(sort, {k = curK, v = curV})
 		copy[curK] = nil
 	end
 	return sort
 end
 
-local bb = require("badboy")
-json = bb.json
+formatJson = function (fileName, ...)
+	return string.format(getUIContent(fileName), _jsonSize.width, _jsonSize.height, unpack(...))
+end
+
+resetConfig = function (...)
+	dg("数据升级，重置中..")
+	for i=1, _configCount do
+	    setStringConfig("configName"..tostring(i), _configDefaultName)
+	    setStringConfig(tostring(i-1), "")
+	end
+end
